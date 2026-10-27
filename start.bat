@@ -5,20 +5,26 @@ cd /d "%~dp0"
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo Node.js 20 yoki yangirog'i kerak. https://nodejs.org
+  echo Node.js 24.15 yoki yangirog'i kerak. https://nodejs.org
+  pause
+  exit /b 1
+)
+node -e "const [major,minor]=process.versions.node.split('.').map(Number);process.exit(major>24||(major===24&&minor>=15)?0:1)"
+if errorlevel 1 (
+  echo Node.js 24.15 yoki yangirog'i kerak. https://nodejs.org
   pause
   exit /b 1
 )
 
 if not exist "backend\.env" (
-  copy "backend\.env.example" "backend\.env" >nul
-  echo backend\.env yaratildi. Production uchun JWT secretlarni almashtiring.
+  node "backend\scripts\init-env.cjs"
+  if errorlevel 1 (pause & exit /b 1)
 )
 
 if not exist "backend\node_modules" (
   echo Backend paketlari o'rnatilmoqda...
   pushd backend
-  call npm install
+  call npm ci
   if errorlevel 1 (popd & pause & exit /b 1)
   popd
 )
@@ -26,7 +32,7 @@ if not exist "backend\node_modules" (
 if not exist "frontend\node_modules" (
   echo Frontend paketlari o'rnatilmoqda...
   pushd frontend
-  call npm install
+  call npm ci
   if errorlevel 1 (popd & pause & exit /b 1)
   popd
 )

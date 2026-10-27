@@ -4,7 +4,7 @@ O‘quv markazlari uchun mobilga mos fullstack ilova: o‘quvchilar, guruhlar, d
 
 ## Tez boshlash (Windows)
 
-1. Node.js 20 yoki undan yangisini o‘rnating.
+1. Node.js 24.15 yoki undan yangisini o‘rnating.
 2. `start.bat` faylini ishga tushiring. Dastlabki ishga tushirishda backend va frontend paketlari o‘rnatiladi, SQLite bazasi yaratiladi va boshlang‘ich administrator qo‘shiladi.
 3. Brauzerda `http://localhost:3000` sahifasini oching.
 
@@ -15,9 +15,9 @@ Boshlang‘ich hisob: `superadmin` / `Admin123!`. Birinchi kirishda yangi parol 
 Loyiha SQLite ishlatadi; Docker yoki alohida ma’lumotlar bazasi serveri talab qilinmaydi.
 
 ```powershell
-Copy-Item backend\.env.example backend\.env
+node backend\scripts\init-env.cjs
 cd backend
-npm install
+npm ci
 npx prisma generate
 npx prisma migrate deploy
 npm run prisma:seed
@@ -28,11 +28,11 @@ Yangi terminalda:
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Backend API `http://localhost:4000/api`, frontend esa `http://localhost:3000` manzilida ishlaydi. `backend\.env` ichidagi JWT kalitlarini internetga ochiq yoki production muhitida ishlatishdan oldin o‘zgartiring.
+Backend API `http://localhost:4000/api`, frontend esa `http://localhost:3000` manzilida ishlaydi. `start.bat` `.env` faylini ilk ishga tushirishda yaratib, JWT kalitlarini tasodifiy qiymatlar bilan sozlaydi. Qo‘lda sozlashda ham access va refresh kalitlari alohida, har biri kamida 32 belgili bo‘lishi kerak.
 
 ## Modullar
 
@@ -43,6 +43,7 @@ Backend API `http://localhost:4000/api`, frontend esa `http://localhost:3000` ma
 - **To‘lovlar:** to‘lovni ro‘yxatga olish, oy va usul bo‘yicha tarix.
 - **Foydalanuvchilar:** administrator va o‘qituvchi hisoblari, hisobni faollashtirish/o‘chirish.
 - **Sozlamalar va audit:** markaz sozlamalari hamda tizimdagi boshqaruv amallari.
+- **Xavfsizlik:** so‘rov validatsiyasi, HTTP security headers, API/login rate limit, refresh token rotation va hisob o‘chirilganda sessiyalarni bekor qilish.
 
 ## Rollar
 
@@ -55,3 +56,21 @@ Backend API `http://localhost:4000/api`, frontend esa `http://localhost:3000` ma
 - DB: Prisma ORM + SQLite (`backend/prisma/dev.db`)
 
 SQLite lokal yoki kichik o‘rnatish uchun tanlandi, shu bois dastur Docker o‘rnatmasdan ham ishlaydi. DB fayli va maxfiy sozlamalar versiya nazoratiga qo‘shilmaydi.
+
+## Tekshiruvlar
+
+```powershell
+cd backend
+npm ci
+npm run prisma:generate
+npm run build
+npm run test:smoke
+npm audit
+
+cd ..\frontend
+npm ci
+npm run build
+npm audit
+```
+
+GitHub Actions build va audit tekshiruvlarini `main` branch hamda pull requestlarda avtomatik bajaradi.

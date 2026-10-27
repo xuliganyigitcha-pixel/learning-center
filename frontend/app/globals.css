@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-
 :root {
   color-scheme: light;
   --ink: #17241f;
@@ -11,7 +9,7 @@
   --green-soft: #e7f4ed;
   --sidebar: #12271f;
   --white: #fff;
-  font-family: 'DM Sans', sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 * { box-sizing: border-box; }

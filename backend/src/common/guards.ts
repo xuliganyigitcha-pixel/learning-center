@@ -2,12 +2,17 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY, ROLES_KEY } from './decorators';
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService, private readonly reflector: Reflector) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -24,6 +29,27 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Sessiya muddati tugagan');
     }
+    if (!request.user.sid) throw new UnauthorizedException('Sessiya yaroqsiz');
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: request.user.sid,
+        userId: request.user.sub,
+        expiresAt: { gt: new Date() },
+      },
+      select: {
+        user: {
+          select: { id: true, role: true, login: true, isActive: true, mustChangePw: true },
+        },
+      },
+    });
+    const user = session?.user;
+    if (!user?.isActive) throw new UnauthorizedException('Hisob faol emas');
+    request.user = {
+      sub: user.id,
+      role: user.role,
+      login: user.login,
+      mustChangePw: user.mustChangePw,
+    };
     if (
       request.user.mustChangePw &&
       !['/api/auth/me', '/api/auth/change-password', '/api/auth/logout'].includes(request.path)

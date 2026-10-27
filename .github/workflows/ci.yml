@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install backend
+        working-directory: backend
+        run: npm ci
+      - name: Verify backend dependencies
+        working-directory: backend
+        run: npm audit
+      - name: Run backend smoke tests
+        working-directory: backend
+        env:
+          DATABASE_URL: file:./dev.db
+          JWT_ACCESS_SECRET: ci-access-secret-at-least-thirty-two-characters
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-thirty-two-characters
+        run: npm run test:smoke
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Verify frontend dependencies
+        working-directory: frontend
+        run: npm audit
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build

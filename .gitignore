@@ -5,4 +5,5 @@ dist/
 backend/.env
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
+backend/prisma/smoke.db*
 frontend/.env.local

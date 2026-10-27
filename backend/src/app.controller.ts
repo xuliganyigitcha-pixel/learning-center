@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ConflictException,
   ForbiddenException,
   Get,
   NotFoundException,
@@ -12,70 +13,158 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, Min, MinLength } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
+import { randomInt } from 'node:crypto';
 import { PrismaService } from './prisma.service';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public, Roles } from './common/decorators';
+import { Throttle } from '@nestjs/throttler';
 
 class LoginDto {
-  @IsString() @MinLength(1) login!: string;
-  @IsString() @MinLength(6) password!: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsString() @MinLength(1) @MaxLength(100)
+  login!: string;
+  @IsString() @MinLength(8) @MaxLength(128)
+  password!: string;
 }
 
 class PasswordDto {
-  @IsString() @MinLength(8) oldPassword!: string;
-  @IsString() @MinLength(8) newPassword!: string;
+  @IsString() @MinLength(8) @MaxLength(128)
+  oldPassword!: string;
+  @IsString() @MinLength(12) @MaxLength(128)
+  newPassword!: string;
 }
 
 class StudentDto {
-  @IsString() @MinLength(1) firstName!: string;
-  @IsString() @MinLength(1) lastName!: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() address?: string;
-  @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsString() groupId?: string;
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) monthlyFee?: number;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100)
+  firstName!: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100)
+  lastName!: string;
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  @IsOptional() @IsString() @MaxLength(250) address?: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+  @IsOptional() @IsString() @MaxLength(30) groupId?: string;
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) monthlyFee?: number;
 }
 
 class StudentUpdateDto {
-  @IsOptional() @IsString() firstName?: string;
-  @IsOptional() @IsString() lastName?: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() address?: string;
-  @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsString() groupId?: string;
+  @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100) firstName?: string;
+  @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100) lastName?: string;
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  @IsOptional() @IsString() @MaxLength(250) address?: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+  @IsOptional() @IsString() @MaxLength(30) groupId?: string;
   @IsOptional() @IsIn(['ACTIVE', 'FINISHED', 'LEFT', 'FROZEN']) status?: string;
-  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) monthlyFee?: number;
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) monthlyFee?: number;
 }
 
 class GroupDto {
-  @IsString() @MinLength(1) name!: string;
-  @IsOptional() @IsString() teacherId?: string;
-  @IsOptional() @IsString() scheduleText?: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100)
+  name!: string;
+  @IsOptional() @IsString() @MaxLength(30) teacherId?: string;
+  @IsOptional() @IsString() @MaxLength(250) scheduleText?: string;
 }
 
 class GroupUpdateDto {
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() teacherId?: string;
-  @IsOptional() @IsString() scheduleText?: string;
-  @IsOptional() @IsIn([true, false]) isActive?: boolean;
+  @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(1) @MaxLength(100) name?: string;
+  @IsOptional() @IsString() @MaxLength(30) teacherId?: string;
+  @IsOptional() @IsString() @MaxLength(250) scheduleText?: string;
+  @IsOptional() @IsBoolean() isActive?: boolean;
 }
 
 class LessonDto {
-  @IsString() groupId!: string;
-  @IsString() date!: string;
-  @IsOptional() @IsString() topic?: string;
+  @IsString() @MaxLength(30) groupId!: string;
+  @IsDateString() date!: string;
+  @IsOptional() @IsString() @MaxLength(250) topic?: string;
 }
 
 class PaymentDto {
-  @IsString() studentId!: string;
-  @Type(() => Number) @IsNumber() @Min(1) amount!: number;
-  @IsString() periodMonth!: string;
+  @IsString() @MaxLength(30) studentId!: string;
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(1) amount!: number;
+  @IsString() @MaxLength(7) periodMonth!: string;
   @IsOptional() @IsIn(['CASH', 'CARD', 'CLICK', 'PAYME']) method?: string;
-  @IsOptional() @IsString() comment?: string;
+  @IsOptional() @IsString() @MaxLength(1000) comment?: string;
+}
+
+class LessonUpdateDto {
+  @IsOptional() @IsString() @MaxLength(250) topic?: string;
+  @IsOptional() @IsBoolean() isCancelled?: boolean;
+  @IsOptional() @IsString() @MaxLength(500) cancelReason?: string;
+}
+
+class AttendanceRecordDto {
+  @IsString() @MaxLength(30) studentId!: string;
+  @IsIn(['PRESENT', 'ABSENT_EXCUSED', 'ABSENT_UNEXCUSED', 'LATE']) status!: string;
+}
+
+class AttendanceBatchDto {
+  @ValidateNested({ each: true })
+  @Type(() => AttendanceRecordDto)
+  @ArrayMaxSize(500)
+  @ArrayUnique((record: AttendanceRecordDto) => record.studentId)
+  records!: AttendanceRecordDto[];
+}
+
+class GradeRecordDto {
+  @IsString() @MaxLength(30) studentId!: string;
+  @Type(() => Number) @IsInt() @Min(0) @Max(100) score!: number;
+  @IsOptional() @IsString() @MaxLength(1000) comment?: string;
+}
+
+class GradesBatchDto {
+  @ValidateNested({ each: true })
+  @Type(() => GradeRecordDto)
+  @ArrayMaxSize(500)
+  @ArrayUnique((record: GradeRecordDto) => record.studentId)
+  records!: GradeRecordDto[];
+}
+
+class CreateUserDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsString() @MinLength(3) @MaxLength(100)
+  login!: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(2) @MaxLength(120)
+  fullName!: string;
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  @IsIn(['ADMIN', 'TEACHER']) role!: string;
+  @IsString() @MinLength(12) @MaxLength(128) password!: string;
+}
+
+class UpdateUserDto {
+  @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString() @MinLength(2) @MaxLength(120) fullName?: string;
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+}
+
+class SettingDto {
+  @IsString() @MinLength(2) @MaxLength(50) key!: string;
+  @IsString() @MaxLength(500) value!: string;
 }
 
 @Controller('auth')
@@ -84,6 +173,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async login(@Body() body: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.login(
       body.login,
@@ -163,19 +253,21 @@ export class AppController {
       }),
       this.prisma.lesson.count({
         where: {
+          isCancelled: false,
           date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
           ...(user.role === 'TEACHER' ? { group: { teacherId: user.sub } } : {}),
         },
       }),
-      this.prisma.payment.aggregate({
-        where: {
-          paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
-          ...(user.role === 'TEACHER' ? { id: '__none__' } : {}),
-        },
-        _sum: { amount: true },
-      }),
+      user.role === 'TEACHER'
+        ? Promise.resolve(0)
+        : this.prisma.payment
+            .aggregate({
+              where: { paidAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } },
+              _sum: { amount: true },
+            })
+            .then((result) => result._sum.amount || 0),
     ]);
-    return { students, activeStudents, groups, todayLessons: lessons, monthPayments: payments._sum.amount || 0 };
+    return { students, activeStudents, groups, todayLessons: lessons, monthPayments: payments };
   }
 
   @Get('students')
@@ -313,7 +405,7 @@ export class AppController {
   @Patch('lessons/:id')
   updateLesson(
     @Param('id') id: string,
-    @Body() body: { topic?: string; isCancelled?: boolean; cancelReason?: string },
+    @Body() body: LessonUpdateDto,
     @CurrentUser() user: { sub: string; role: string },
   ) {
     if (user.role === 'TEACHER') {
@@ -352,7 +444,7 @@ export class AppController {
   @Post('attendance/:lessonId')
   async saveAttendance(
     @Param('lessonId') lessonId: string,
-    @Body() body: { records: { studentId: string; status: string }[] },
+    @Body() body: AttendanceBatchDto,
     @CurrentUser() user: { sub: string; role: string },
   ) {
     const lesson = await this.prisma.lesson.findUnique({
@@ -428,7 +520,7 @@ export class AppController {
   @Post('grades/:lessonId')
   async saveGrades(
     @Param('lessonId') lessonId: string,
-    @Body() body: { records: { studentId: string; score: number; comment?: string }[] },
+    @Body() body: GradesBatchDto,
     @CurrentUser() user: { sub: string; role: string },
   ) {
     const lesson = await this.prisma.lesson.findUnique({
@@ -526,15 +618,14 @@ export class AppController {
   @Post('users')
   @Roles('SUPER_ADMIN', 'ADMIN')
   async createUser(
-    @Body() body: { login: string; fullName: string; phone?: string; role: string; password: string },
+    @Body() body: CreateUserDto,
   ) {
-    if (!body.login || !body.fullName || !body.password || body.password.length < 8) {
-      throw new BadRequestException('Login, ism va kamida 8 belgili parol kerak');
-    }
-    if (!['ADMIN', 'TEACHER'].includes(body.role)) throw new BadRequestException('Rol noto‘g‘ri');
+    const login = body.login.trim().toLowerCase();
+    const exists = await this.prisma.user.findUnique({ where: { login }, select: { id: true } });
+    if (exists) throw new ConflictException('Bu login band');
     return this.prisma.user.create({
       data: {
-        login: body.login.trim().toLowerCase(),
+        login,
         fullName: body.fullName.trim(),
         phone: body.phone?.trim() || null,
         role: body.role,
@@ -547,11 +638,40 @@ export class AppController {
 
   @Patch('users/:id')
   @Roles('SUPER_ADMIN', 'ADMIN')
-  updateUser(@Param('id') id: string, @Body() body: { isActive?: boolean; fullName?: string; phone?: string }) {
-    return this.prisma.user.update({
-      where: { id },
-      data: { isActive: body.isActive, fullName: body.fullName, phone: body.phone },
-      select: { id: true, login: true, fullName: true, phone: true, role: true, isActive: true },
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: UpdateUserDto,
+    @CurrentUser() actor: { sub: string; role: string },
+  ) {
+    return this.prisma.$transaction(async (transaction) => {
+      const target = await transaction.user.findUnique({
+        where: { id },
+        select: { id: true, role: true, isActive: true },
+      });
+      if (!target) throw new NotFoundException('Foydalanuvchi topilmadi');
+      if (body.isActive === false && target.id === actor.sub) {
+        throw new BadRequestException('O‘z hisobingizni o‘chira olmaysiz');
+      }
+      if (target.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+        throw new ForbiddenException('Super administrator hisobini faqat super administrator boshqaradi');
+      }
+      if (body.isActive === false && target.role === 'SUPER_ADMIN' && target.isActive) {
+        const activeAdmins = await transaction.user.count({
+          where: { role: 'SUPER_ADMIN', isActive: true },
+        });
+        if (activeAdmins <= 1) {
+          throw new BadRequestException('Oxirgi faol super administratorni o‘chirib bo‘lmaydi');
+        }
+      }
+      const updated = await transaction.user.update({
+        where: { id },
+        data: { isActive: body.isActive, fullName: body.fullName, phone: body.phone },
+        select: { id: true, login: true, fullName: true, phone: true, role: true, isActive: true },
+      });
+      if (!updated.isActive) {
+        await transaction.session.deleteMany({ where: { userId: updated.id } });
+      }
+      return updated;
     });
   }
 
@@ -562,7 +682,7 @@ export class AppController {
 
   @Post('settings')
   @Roles('SUPER_ADMIN')
-  saveSetting(@Body() body: { key: string; value: string }) {
+  saveSetting(@Body() body: SettingDto) {
     if (!/^[a-z][a-z0-9_]{1,49}$/.test(body.key) || typeof body.value !== 'string') {
       throw new BadRequestException('Sozlama noto‘g‘ri');
     }
@@ -585,20 +705,9 @@ export class AppController {
 
   private async uniqueStudentCode(): Promise<string> {
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const code = String(randomInt(100000, 1000000));
       if (!(await this.prisma.student.findUnique({ where: { studentCode: code } }))) return code;
     }
     throw new BadRequestException('O‘quvchi kodi yaratilmedi, qayta urinib ko‘ring');
   }
-}
-
-export class AttendanceRecordDto {
-  @IsString() studentId!: string;
-  @IsIn(['PRESENT', 'ABSENT_EXCUSED', 'ABSENT_UNEXCUSED', 'LATE']) status!: string;
-}
-
-export class GradeRecordDto {
-  @IsString() studentId!: string;
-  @Type(() => Number) @IsInt() @Min(0) score!: number;
-  @IsOptional() @IsString() comment?: string;
 }

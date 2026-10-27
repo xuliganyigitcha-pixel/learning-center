@@ -27,15 +27,19 @@ export class AuthService {
     await this.prisma.loginAttempt.create({
       data: { login: normalizedLogin, ip, success: valid },
     });
+    await this.prisma.loginAttempt.deleteMany({
+      where: { createdAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+    });
     if (!valid || !user) throw new UnauthorizedException('Login yoki parol xato');
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
+    const session = await this.createSession(user.id, ip, userAgent);
     return {
-      accessToken: this.accessToken(user),
-      refreshToken: await this.createSession(user.id, ip, userAgent),
+      accessToken: this.accessToken(user, session.id),
+      refreshToken: session.token,
       user: this.publicUser(user),
     };
   }
@@ -65,9 +69,10 @@ export class AuthService {
     if (!user?.isActive) throw new UnauthorizedException('Hisob faol emas');
 
     await this.prisma.session.delete({ where: { id: session.id } });
+    const nextSession = await this.createSession(user.id, ip, userAgent);
     return {
-      accessToken: this.accessToken(user),
-      refreshToken: await this.createSession(user.id, ip, userAgent),
+      accessToken: this.accessToken(user, nextSession.id),
+      refreshToken: nextSession.token,
     };
   }
 
@@ -105,9 +110,18 @@ export class AuthService {
     return { ok: true };
   }
 
-  private accessToken(user: { id: string; role: string; login: string; mustChangePw: boolean }) {
+  private accessToken(
+    user: { id: string; role: string; login: string; mustChangePw: boolean },
+    sessionId: string,
+  ) {
     return this.jwt.sign(
-      { sub: user.id, role: user.role, login: user.login, mustChangePw: user.mustChangePw },
+      {
+        sub: user.id,
+        sid: sessionId,
+        role: user.role,
+        login: user.login,
+        mustChangePw: user.mustChangePw,
+      },
       {
         secret: process.env.JWT_ACCESS_SECRET,
         expiresIn: accessTokenLifetime(),
@@ -132,7 +146,7 @@ export class AuthService {
         expiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
       },
     });
-    return token;
+    return { id: sessionId, token };
   }
 
   private publicUser(user: {

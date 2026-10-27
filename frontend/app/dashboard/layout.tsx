@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect, useState } from 'react';
-import { api, getUser, logout, User } from '../lib/api';
-import { FormEvent } from 'react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { api, clearAuth, getUser, logout, User } from '../lib/api';
 
 const items = [
   { href: '/dashboard', label: 'Umumiy ko‘rinish', icon: '⌂' },
@@ -58,8 +57,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             newPassword: form.get('newPassword'),
           }),
         });
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
+        clearAuth();
         router.replace('/login');
       } catch (reason) {
         setPasswordError(reason instanceof Error ? reason.message : 'Parolni o‘zgartirib bo‘lmadi');
@@ -75,7 +73,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <p>Xavfsizlik uchun vaqtinchalik parolni o‘zgartirish talab qilinadi.</p>
             {passwordError && <div className="error-box" role="alert">{passwordError}</div>}
             <div className="field"><label htmlFor="oldPassword">Joriy parol</label><input id="oldPassword" name="oldPassword" type="password" minLength={8} required /></div>
-            <div className="field"><label htmlFor="newPassword">Yangi parol</label><input id="newPassword" name="newPassword" type="password" minLength={8} required /></div>
+            <div className="field"><label htmlFor="newPassword">Yangi parol</label><input id="newPassword" name="newPassword" type="password" minLength={12} required /></div>
             <button className="btn btn-primary full" disabled={passwordSaving}>{passwordSaving ? 'Saqlanmoqda…' : 'Parolni saqlash'}</button>
           </form>
         </section>

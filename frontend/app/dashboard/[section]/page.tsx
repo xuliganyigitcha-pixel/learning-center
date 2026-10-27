@@ -220,7 +220,7 @@ export default function SectionPage({ params }: { params: { section: string } })
         const form = new FormData(event.currentTarget);
         void submit(event, '/users', { fullName: form.get('fullName'), login: form.get('login'), role: form.get('role'), password: form.get('password'), phone: form.get('phone') || undefined });
       }}>
-        <Field label="Ism familiya" name="fullName" required /><Field label="Login" name="login" required /><Field label="Vaqtinchalik parol" name="password" type="password" required />
+        <Field label="Ism familiya" name="fullName" required /><Field label="Login" name="login" required /><Field label="Vaqtinchalik parol (kamida 12 belgi)" name="password" type="password" required />
         <div className="field"><label>Rol</label><select name="role"><option value="TEACHER">O‘qituvchi</option><option value="ADMIN">Administrator</option></select></div>
         <button className="btn btn-primary">Hisob yaratish</button>
       </form>}
