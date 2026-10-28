@@ -6,10 +6,10 @@ const prisma = new PrismaClient();
 async function main() {
   const passwordHash = await bcrypt.hash('Admin123!', 12);
   await prisma.user.upsert({
-    where: { login: 'superadmin' },
+    where: { login: 'admin' },
     update: {},
     create: {
-      login: 'superadmin',
+      login: 'admin',
       passwordHash,
       fullName: 'Bosh administrator',
       role: 'SUPER_ADMIN',

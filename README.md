@@ -8,7 +8,7 @@ O‘quv markazlari uchun mobilga mos fullstack ilova: o‘quvchilar, guruhlar, d
 2. `start.bat` faylini ishga tushiring. Dastlabki ishga tushirishda backend va frontend paketlari o‘rnatiladi, SQLite bazasi yaratiladi va boshlang‘ich administrator qo‘shiladi.
 3. Brauzerda `http://localhost:3000` sahifasini oching.
 
-Boshlang‘ich hisob: `superadmin` / `Admin123!`. Birinchi kirishda yangi parol o‘rnatish so‘raladi.
+Boshlang‘ich hisob: `admin` / `Admin123!`. Birinchi kirishda yangi, kamida 12 belgili parol o‘rnatish so‘raladi.
 
 ## Qo‘lda ishga tushirish
 

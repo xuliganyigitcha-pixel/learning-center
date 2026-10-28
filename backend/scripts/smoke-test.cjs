@@ -87,7 +87,7 @@ async function main() {
 
     let response = await request('/auth/login', {
       method: 'POST',
-      body: { login: 'SUPERADMIN', password: 'Admin123!' },
+      body: { login: 'ADMIN', password: 'Admin123!' },
     });
     const initialLogin = await expectStatus(response, 201, 'initial login');
     let token = initialLogin.accessToken;
@@ -107,7 +107,7 @@ async function main() {
 
     response = await request('/auth/login', {
       method: 'POST',
-      body: { login: 'superadmin', password: 'LearningCenter2026!' },
+      body: { login: 'admin', password: 'LearningCenter2026!' },
     });
     const adminLogin = await expectStatus(response, 201, 'admin login');
     token = adminLogin.accessToken;
@@ -286,7 +286,7 @@ async function main() {
     assert.equal(JSON.stringify(audit).includes('LearningCenter2026!'), false);
     response = await request('/auth/login', {
       method: 'POST',
-      body: { login: 'superadmin', password: 'LearningCenter2026!' },
+      body: { login: 'admin', password: 'LearningCenter2026!' },
     });
     const logoutLogin = await expectStatus(response, 201, 'logout login');
     const logoutCookie = cookieFrom(response);

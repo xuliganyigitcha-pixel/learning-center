@@ -53,5 +53,5 @@ start "Learning Center Web" cmd /k "cd /d ""%~dp0frontend"" && npm run dev"
 timeout /t 5 /nobreak >nul
 start "" http://localhost:3000
 echo Tayyor: http://localhost:3000
-echo Kirish: superadmin / Admin123!
+echo Kirish: admin / Admin123!
 endlocal
